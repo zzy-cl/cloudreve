@@ -4,24 +4,13 @@ An [Agent Skills](https://agentskills.io)-compatible skill for managing files on
 
 ## Features
 
-- Upload local files to Cloudreve
+- Upload local files to Cloudreve (chunked, supports large files)
 - Download files from Cloudreve to local
-- List directory contents
+- List directory contents with filtering (by category, name, type, etc.)
 - Delete files
-- Check storage usage
-- JWT authentication via Cloudreve v4 session API
-
-## How it works
-
-```
-User: "upload to cloudreve"
-  ↓
-Agent loads SKILL.md, gets token via /api/v4/session/token
-  ↓
-Calls scripts/upload.sh with URL + token + file
-  ↓
-Cloudreve v4 API: PUT session → POST binary chunk → Done
-```
+- Check storage usage / quota
+- JWT authentication with token refresh support
+- Official API-compliant (see [docs](https://docs.cloudreve.org/zh/api/overview))
 
 ## Requirements
 
@@ -32,8 +21,6 @@ Cloudreve v4 API: PUT session → POST binary chunk → Done
 ## Installation
 
 ### OpenClaw
-
-Copy to your skills folder:
 
 ```bash
 cp -r cloudreve ~/.agents/skills/
@@ -72,41 +59,34 @@ cloudreve/
 ├── README.md                     # This file
 ├── LICENSE                       # MIT License
 ├── scripts/
-│   ├── upload.sh                 # Upload file to Cloudreve
-│   ├── download.sh               # Download file from Cloudreve
-│   ├── list.sh                   # List directory contents
-│   ├── delete.sh                 # Delete a file
+│   ├── upload.sh                 # Upload file (chunked)
+│   ├── download.sh               # Download file
+│   ├── list.sh                   # List directory
+│   ├── delete.sh                 # Delete file
 │   └── storage.sh                # Show storage usage
 └── references/
-    └── api-reference.md          # Cloudreve v4 API documentation
+    └── api-reference.md          # Cloudreve v4 API docs
 ```
-
-## API Reference (Cloudreve v4)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v4/session/token` | POST | Login (fields: `email`, `password`) |
-| `/api/v4/user/capacity` | GET | Storage usage |
-| `/api/v4/file?uri=<URI>` | GET | List directory contents |
-| `/api/v4/file/upload` | PUT | Create upload session |
-| `/api/v4/file/upload/<session_id>/<chunk>` | POST | Upload binary chunk |
-| `/api/v4/file/url` | POST | Get download URLs |
-| `/api/v4/file` | DELETE | Delete files |
 
 ## Changelog
 
-### v1.1.0 (2026-03-30)
+### v2.0.0 (2026-03-30)
 
-- **Breaking:** Updated all API endpoints for Cloudreve v4
-- **Breaking:** Login endpoint changed from `/api/v4/user/login` to `/api/v4/session/token`
-- **Breaking:** Login fields changed from `userName`/`Password` to `email`/`password`
-- Fixed JSON injection vulnerability in upload.sh and delete.sh (now using python3 for JSON construction)
-- Updated file list API from `/api/v4/directory` to `/api/v4/file?uri=`
-- Verified all scripts against live Cloudreve v4 instance
+- **Rewritten against official Cloudreve v4 API docs**
+- Login: correct endpoint (`/api/v4/session/token`) and fields (`email`/`password`)
+- File list: correct endpoint (`/api/v4/file?uri=`)
+- Upload: now supports chunked upload for large files
+- All JSON payloads use python3 construction (no shell injection)
+- URL encoding for file URIs in query parameters
+- Comprehensive error handling with official error codes
+- SKILL.md follows Agent Skills spec: frontmatter, When to use/not use, workflow, gotchas
+- Added file URI scheme documentation (query params for filtering)
+- Added SSE file events endpoint reference
+- Added official docs links throughout
 
 ### v1.0.0 (2026-03-28)
 
-- Initial release targeting Cloudreve v4
+- Initial release (reverse-engineered API, not based on official docs)
 
 ## License
 

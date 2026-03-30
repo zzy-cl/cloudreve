@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # List files in Cloudreve v4 directory
 # Usage: list.sh <CLOUDREVE_URL> <TOKEN> [DIR_URI]
+# Supports Cloudreve v4 file URI query parameters:
+#   cloudreve://my?category=image  (images only)
+#   cloudreve://my?name=report     (search by name)
+#   cloudreve://my?type=file       (files only)
+#   cloudreve://my?name=report&type=file&case_folding=true
 
 set -euo pipefail
 
@@ -28,16 +33,18 @@ if not files:
     sys.exit(0)
 
 for f in files:
-    ftype = "📁" if f["type"] == 1 else "📄"
+    ftype = "dir" if f["type"] == 1 else "   "
     name = f["name"]
     size = f.get("size", 0)
-    if size > 1073741824:
-        size_str = f"{size/1073741824:.1f} GB"
+    if f["type"] == 1:
+        size_str = "-"
+    elif size > 1073741824:
+        size_str = f"{size/1073741824:.1f}G"
     elif size > 1048576:
-        size_str = f"{size/1048576:.1f} MB"
+        size_str = f"{size/1048576:.1f}M"
     elif size > 1024:
-        size_str = f"{size/1024:.1f} KB"
+        size_str = f"{size/1024:.0f}K"
     else:
-        size_str = f"{size} B"
-    print(f"{ftype} {name:40s} {size_str:>10s}  {f['path']}")
+        size_str = f"{size}B"
+    print(f"[{ftype}] {size_str:>8s}  {name}  ({f['path']})")
 PYEOF
