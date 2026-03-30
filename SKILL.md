@@ -11,7 +11,7 @@ license: MIT
 compatibility: Requires a running Cloudreve v4 instance. Agent must have shell access (curl + python3).
 metadata:
   author: zzy-cl
-  version: "2.0.0"
+  version: "3.0.0"
   openclaw:
     always: true
     emoji: "☁️"
@@ -70,10 +70,11 @@ All scripts in `scripts/` dir, relative to this skill directory.
 
 | Command | Usage | Description |
 |---------|-------|-------------|
-| `upload.sh` | `upload.sh <URL> <TOKEN> <FILE> [NAME] [DIR]` | Upload local file |
+| `upload.sh` | `upload.sh <URL> <TOKEN> <FILE> [NAME] [DIR]` | Upload local file (auto-overwrites existing) |
+| `upload.py` | `python3 upload.py <URL> <TOKEN> <FILE> [NAME] [DIR]` | Upload (Python version, same logic) |
 | `download.sh` | `download.sh <URL> <TOKEN> <URI> [PATH]` | Download file to local |
 | `list.sh` | `list.sh <URL> <TOKEN> [DIR_URI]` | List directory contents |
-| `delete.sh` | `delete.sh <URL> <TOKEN> <FILE_URI>` | Delete a file |
+| `delete.sh` | `delete.sh <URL> <TOKEN> <FILE_URI>` | Delete a file (auto-retries on lock conflict) |
 | `storage.sh` | `storage.sh <URL> <TOKEN>` | Show storage usage |
 
 ## Workflow
@@ -147,10 +148,13 @@ cloudreve://[user@]host[/path][?query]
 | 401 | Not logged in | Re-authenticate |
 | 403 | No permission | Check user/group permissions |
 | 40001 | Parameter error | Check request parameters |
+| 40004 | Object existed | **upload.sh auto-deletes and re-uploads** |
+| 40013 | Invalid Content-Length | Ensure raw binary upload (not multipart) |
 | 40016 | Path not exist | Verify URI path |
 | 40020 | Invalid credentials | Check email/password |
 | 40049 | File too large | Check storage policy limits |
 | 40051 | Insufficient capacity | Free up storage or upgrade |
+| 40073 | Lock conflict | File locked by incomplete upload session; **delete.sh auto-retries with backoff** |
 | 40077 | Entity not exist | Verify file URI |
 
 ## Gotchas
@@ -158,8 +162,12 @@ cloudreve://[user@]host[/path][?query]
 - API prefix: `/api/v4/` — all endpoints use this
 - Login: `POST /api/v4/session/token` with `email` + `password` (NOT `/api/v4/user/login`)
 - Upload: PUT session → POST chunk(s) — local storage auto-completes, no step 3 needed
+- **Upload Content-Type must be `application/octet-stream` (raw binary)** — NOT `multipart/form-data`. Using `-F` or multipart will cause `40013 Invalid Content-Length`
 - Download: `POST /api/v4/file/url` returns signed URLs, then GET the URL
 - File URIs must be URL-encoded when used as query parameters
 - Tokens expire ~1 hour; use refresh token or re-login
 - For small files (< chunk_size), single-chunk upload is sufficient
-- Official API docs: https://docs.cloudreve.org/zh/api/overview
+- **Overwrite**: upload.sh handles `40004 Object existed` by deleting the file first, then re-creating the session. If the file is locked (`40073`), it waits and retries
+- **Lock conflicts (`40073`)**: Happen when an upload session creates a file record but never completes (crash, timeout, etc.). The lock expires when the session expires. delete.sh uses exponential backoff retry (3 attempts)
+- **Official API docs**: https://docs.cloudreve.org/zh/api/overview
+- **Two upload scripts**: `upload.sh` (bash, uses `dd` + pipe) and `upload.py` (python, uses `requests`). Same behavior, python version is more portable
