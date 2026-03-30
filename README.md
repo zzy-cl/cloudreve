@@ -9,14 +9,14 @@ An [Agent Skills](https://agentskills.io)-compatible skill for managing files on
 - List directory contents
 - Delete files
 - Check storage usage
-- JWT authentication via browser session or curl login
+- JWT authentication via Cloudreve v4 session API
 
 ## How it works
 
 ```
 User: "upload to cloudreve"
   ↓
-Agent loads SKILL.md, gets token via agent-browser or curl
+Agent loads SKILL.md, gets token via /api/v4/session/token
   ↓
 Calls scripts/upload.sh with URL + token + file
   ↓
@@ -28,7 +28,6 @@ Cloudreve v4 API: PUT session → POST binary chunk → Done
 - A running Cloudreve v4 instance (Docker or binary)
 - `CLOUDREVE_URL`, `CLOUDREVE_USER`, `CLOUDREVE_PASS` environment variables
 - `curl` and `python3` in agent shell
-- `agent-browser` (optional, for browser-based token extraction)
 
 ## Installation
 
@@ -82,14 +81,32 @@ cloudreve/
     └── api-reference.md          # Cloudreve v4 API documentation
 ```
 
-## API Discovery
+## API Reference (Cloudreve v4)
 
-Cloudreve v4 has no public API documentation. All endpoints were reverse-engineered from browser network requests. Key findings:
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v4/session/token` | POST | Login (fields: `email`, `password`) |
+| `/api/v4/user/capacity` | GET | Storage usage |
+| `/api/v4/file?uri=<URI>` | GET | List directory contents |
+| `/api/v4/file/upload` | PUT | Create upload session |
+| `/api/v4/file/upload/<session_id>/<chunk>` | POST | Upload binary chunk |
+| `/api/v4/file/url` | POST | Get download URLs |
+| `/api/v4/file` | DELETE | Delete files |
 
-- API prefix: `/api/v4/` (v3 returns 404)
-- Upload: `PUT` to create session, `POST` to upload binary (not multipart)
-- File URIs use `cloudreve://` scheme
-- Download: `POST /api/v4/file/url` returns signed URLs
+## Changelog
+
+### v1.1.0 (2026-03-30)
+
+- **Breaking:** Updated all API endpoints for Cloudreve v4
+- **Breaking:** Login endpoint changed from `/api/v4/user/login` to `/api/v4/session/token`
+- **Breaking:** Login fields changed from `userName`/`Password` to `email`/`password`
+- Fixed JSON injection vulnerability in upload.sh and delete.sh (now using python3 for JSON construction)
+- Updated file list API from `/api/v4/directory` to `/api/v4/file?uri=`
+- Verified all scripts against live Cloudreve v4 instance
+
+### v1.0.0 (2026-03-28)
+
+- Initial release targeting Cloudreve v4
 
 ## License
 

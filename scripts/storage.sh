@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-CLOUDREVE_URL="${1:?Usage: storage.sh <CLOUDREVE_URL> <TOKEN>}"
+CLOUDREVE_URL="${1:?Usage: storage.sh <URL> <TOKEN>}"
 TOKEN="${2:?Missing TOKEN}"
 
 RESPONSE=$(curl -sf -H "Authorization: Bearer $TOKEN" "${CLOUDREVE_URL}/api/v4/user/capacity")

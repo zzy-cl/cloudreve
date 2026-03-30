@@ -15,10 +15,10 @@ TARGET_URI="${REMOTE_DIR}/${REMOTE_NAME}"
 
 echo "Uploading: $LOCAL_FILE ($FILE_SIZE bytes) -> $TARGET_URI"
 
-# Step 1: Create upload session (PUT, field "uri")
+# Step 1: Create upload session (PUT)
 SESSION_RESP=$(curl -sf -X PUT \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d "{\"uri\":\"${TARGET_URI}\",\"size\":${FILE_SIZE}}" \
+  -d "$(python3 -c "import json,sys; print(json.dumps({'uri':sys.argv[1],'size':int(sys.argv[2])}))" "$TARGET_URI" "$FILE_SIZE")" \
   "${CLOUDREVE_URL}/api/v4/file/upload")
 
 SESSION_ID=$(python3 - "$SESSION_RESP" << 'PYEOF'
@@ -29,7 +29,7 @@ print(data["data"]["session_id"])
 PYEOF
 )
 
-# Step 2: Upload binary (POST, Content-Type: octet-stream, NOT multipart)
+# Step 2: Upload binary (POST, Content-Type: octet-stream)
 UPLOAD_CODE=$(curl -sf -X POST \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/octet-stream" \
   --data-binary "@${LOCAL_FILE}" \

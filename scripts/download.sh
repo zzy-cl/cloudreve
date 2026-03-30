@@ -10,7 +10,7 @@ FILE_URI="${3:?Missing URI}"; LOCAL_PATH="${4:-.}"
 # Step 1: Get signed download URL
 URL_RESP=$(curl -sf -X POST \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d "{\"uris\":[\"${FILE_URI}\"]}" \
+  -d "$(python3 -c "import json,sys; print(json.dumps({'uris':[sys.argv[1]]}))" "$FILE_URI")" \
   "${CLOUDREVE_URL}/api/v4/file/url")
 
 DOWNLOAD_URL=$(python3 - "$URL_RESP" << 'PYEOF'

@@ -4,11 +4,19 @@
 
 set -euo pipefail
 
-CLOUDREVE_URL="${1:?Missing URL}"; TOKEN="${2:?Missing TOKEN}"; FILE_URI="${3:?Missing URI}"
+CLOUDREVE_URL="${1:?Usage: delete.sh <URL> <TOKEN> <FILE_URI>}"
+TOKEN="${2:?Missing TOKEN}"
+FILE_URI="${3:?Missing FILE_URI}"
 
-CODE=$(curl -sf -X DELETE \
+RESPONSE=$(curl -sf -X DELETE \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d "{\"uris\":[\"${FILE_URI}\"]}" \
-  "${CLOUDREVE_URL}/api/v4/file" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("code",-1))')
+  -d "$(python3 -c "import json,sys; print(json.dumps({'uris':[sys.argv[1]]}))" "$FILE_URI")" \
+  "${CLOUDREVE_URL}/api/v4/file")
 
-[ "$CODE" = "0" ] && echo "OK: Deleted $FILE_URI" || { echo "ERROR: Delete failed (code: $CODE)" >&2; exit 1; }
+CODE=$(echo "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin).get('code',-1))")
+
+if [ "$CODE" = "0" ]; then
+  echo "OK: Deleted -> $FILE_URI"
+else
+  echo "ERROR: Delete failed" >&2; exit 1
+fi

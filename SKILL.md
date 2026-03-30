@@ -52,30 +52,10 @@ Cloudreve v4 uses JWT Bearer tokens (`Authorization: Bearer <token>`).
 
 ### Get Token
 
-**Method A: Browser session (preferred)**
-
-Use `agent-browser` with persistent session. Token lives in `localStorage`:
-
 ```bash
-agent-browser --session-name cloudreve open "${CLOUDREVE_URL}" && agent-browser --session-name cloudreve wait --load networkidle
-
-# Extract token
-TOKEN=$(agent-browser --session-name cloudreve eval '
-  (() => {
-    const s = JSON.parse(localStorage.getItem("cloudreve_session"));
-    const id = Object.keys(s.sessions)[0];
-    return s.sessions[id].token.access_token;
-  })()
-' | tr -d '"')
-```
-
-**Method B: curl login (headless)**
-
-```bash
-# Login and extract token in one step
-TOKEN=$(curl -sf -X POST "${CLOUDREVE_URL}/api/v4/user/login" \
+TOKEN=$(curl -sf -X POST "${CLOUDREVE_URL}/api/v4/session/token" \
   -H "Content-Type: application/json" \
-  -d "{\"userName\":\"${CLOUDREVE_USER}\",\"Password\":\"${CLOUDREVE_PASS}\"}" \
+  -d "{\"email\":\"${CLOUDREVE_USER}\",\"password\":\"${CLOUDREVE_PASS}\"}" \
   | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['token']['access_token'])")
 ```
 
@@ -91,20 +71,37 @@ All scripts in `scripts/` dir, relative to this skill.
 | delete | `delete.sh <URL> <TOKEN> <FILE_URI>` | Delete a file |
 | storage | `storage.sh <URL> <TOKEN>` | Show storage usage |
 
-Default remote dir: `cloudreve://my/`. File URI format: `cloudreve://my/path/file.txt`.
+Default remote dir: `cloudreve://my`. File URI format: `cloudreve://my/path/file.txt`.
 
 ## Workflow
 
-1. Get token via Method A or B
+1. Get token via auth command
 2. Run script: `scripts/<cmd>.sh "$CLOUDREVE_URL" "$TOKEN" <args>`
 3. Check exit code — `0` = success, non-zero = failure with error message
 4. On auth error (401), re-login and retry once
 
+## API Reference (Cloudreve v4)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v4/session/token` | POST | Login (fields: `email`, `password`) |
+| `/api/v4/user/capacity` | GET | Storage usage |
+| `/api/v4/file?uri=<URI>` | GET | List directory contents |
+| `/api/v4/file/upload` | PUT | Create upload session |
+| `/api/v4/file/upload/<session_id>/<chunk>` | POST | Upload binary chunk |
+| `/api/v4/file/url` | POST | Get download URLs |
+| `/api/v4/file` | DELETE | Delete files |
+
 ## Gotchas
 
-- API prefix is `/api/v4/` — v3 returns 404
-- Upload creates session with **PUT** (not POST), then uploads binary with POST
-- File URIs use `cloudreve://` scheme; URL-encode when passing as query params
-- Docker port 5212 direct connection more reliable than nginx proxy
+- API prefix is `/api/v4/`
+- Login endpoint is `/api/v4/session/token` (NOT `/api/v4/user/login`)
+- Login fields are `email` and `password` (lowercase, not `userName`/`Password`)
+- File URIs use `cloudreve://` scheme (e.g., `cloudreve://my/file.txt`)
+- Upload creates session with **PUT**, then uploads binary with **POST**
 - Tokens expire (~1 hour); re-authenticate on 401
-- API reference: see `references/api-reference.md`
+- URL-encode URIs when passing as query parameters
+
+## License
+
+MIT
